@@ -16,3 +16,7 @@ export const NEUTRAL_COLOR = 0x99aab5;
 export function verifyUrl(pick: string): string {
   return `${WEBSITE_URL}/en/verify?pick=${encodeURIComponent(pick)}`;
 }
+
+export function checkUrl(query: string): string {
+  return `${WEBSITE_URL}/en/check?q=${encodeURIComponent(query)}`;
+}

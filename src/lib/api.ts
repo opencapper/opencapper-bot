@@ -96,6 +96,37 @@ export interface CapperStats {
   roi: number;
 }
 
+export interface CheckRecord {
+  graded: number;
+  wins: number;
+  losses: number;
+  pushes: number;
+  units: number;
+  unitsRisked: number;
+  roi: number;
+}
+
+export type CheckMatchKind =
+  "username" | "discord" | "telegram" | "polymarket" | "reddit";
+
+export interface CheckMatch {
+  username: string;
+  avatarUrl: string | null;
+  matchedBy: CheckMatchKind;
+  status: "member" | "imported" | "claimed";
+  platform: "polymarket" | "reddit" | null;
+  claimedBy: string | null;
+  live: CheckRecord & { pending: number };
+  history: CheckRecord | null;
+  total: CheckRecord;
+  lastPickAt: string | null;
+}
+
+export interface CapperCheck {
+  query: string;
+  matches: CheckMatch[];
+}
+
 export interface RecapResponse {
   from: string;
   to: string;
@@ -179,6 +210,15 @@ export const api = {
       "GET",
       `/picks/settled?${new URLSearchParams({ guildId, since: since.toISOString() })}`,
     ),
+
+  checkDiscord: (discordId: string) =>
+    request<CapperCheck>(
+      "GET",
+      `/check/discord/${encodeURIComponent(discordId)}`,
+    ),
+
+  check: (query: string) =>
+    request<CapperCheck>("GET", `/check?${new URLSearchParams({ q: query })}`),
 
   leaderboard: (sport: SportKey | null, period: LeaderboardPeriod) =>
     request<LeaderboardResponse>(

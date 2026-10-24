@@ -13,6 +13,7 @@ server's honest record. The bot keeps no database: every read and write goes thr
 | `/record [user]`                           | One capper's verified record. Default yourself.                                   |
 | `/leaderboard [sport] [period]`            | Top 10 cappers by ROI (30d, 90d, 1y, all). Default all sports, 30 days.           |
 | `/verify pick`                             | Link to the public proof page of a pick, by number (`#42`) or id.                 |
+| `/capper [user] [name]`                    | Is this capper real? Verified record, or a warning that there is none.            |
 
 ## Results feed
 
@@ -50,6 +51,8 @@ sends `Authorization: Bearer <BOT_API_TOKEN>`. Errors return a non 2xx status wi
 | GET    | `/users/:username/stats`               | `CapperStats`         |
 | GET    | `/picks/settled?guildId=&since=` (ISO) | `ApiSettledPick[]`    |
 | GET    | `/leaderboard?sport=&period=&sort=roi` | `LeaderboardResponse` |
+| GET    | `/check?q=<query>`                     | `CapperCheck`         |
+| GET    | `/check/discord/:discordId`            | `CapperCheck`         |
 
 `ApiEvent` and `ApiPick` carry optional `homeImage`, `awayImage` (absolute image URLs) and
 `homeCountry`, `awayCountry` (short codes such as `USA`). The pick and result embeds use the
@@ -65,6 +68,18 @@ American; units won on a win are `units * odds / 100` (plus odds) or `units * 10
 `1y` or `all`. Response `{ rows, minGraded, total }`, rows `{ rank, username, picks, graded,
 wins, losses, pushes, units, unitsRisked, roi, sports }` sorted by the API. A 404 shows
 "The leaderboard is coming soon."
+
+`/capper`: `user` resolves by Discord id only (`/check/discord/:discordId`), never by name, since
+a same named account elsewhere is exactly what impersonators use. `name` goes to `/check?q=`,
+the same lookup as the web page `/check`: OpenCapper username, Discord username or id,
+Telegram username, Polymarket wallet or name, Reddit name, or a pasted profile link. Response
+`{ query, matches }`, at most 5 matches, best first. A match carries `username`, `avatarUrl`,
+`matchedBy`, `status` (`member`, `imported`, `claimed`), `platform`, `claimedBy`, `live` (a
+`CheckRecord` plus `pending`), `history` (on chain, or null), `total` (live plus history) and
+`lastPickAt` (ISO or null). `CheckRecord` is `{ graded, wins, losses, pushes, units,
+unitsRisked, roi }`. Hidden profiles never match. No match replies "No verified OpenCapper
+record for @user" with the warning and a link to the web check. The endpoint is public and rate
+limited per IP; requests with the bot token skip the limit.
 
 `/verify` needs no API call: it links to `WEBSITE_URL/en/verify?pick=<ref>`, where `ref` is
 the pick id or its sequence number. The web page resolves both.

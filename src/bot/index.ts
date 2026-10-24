@@ -1,3 +1,4 @@
+import "./commands/capper";
 import "./commands/leaderboard";
 import "./commands/pick";
 import "./commands/recap";
