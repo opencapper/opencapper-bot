@@ -57,6 +57,8 @@ Set `DATA_DIR=./data` locally; the default `/app/data` only exists in the contai
 Base `OPENCAPPER_API_URL` (default `https://opencapper.coding-global.com/api`). Every request
 sends `Authorization: Bearer <BOT_API_TOKEN>`. Errors return a non 2xx status with
 `{ "error": "message" }`; the message is shown to the user as is. Types live in `src/lib/api.ts`.
+`POST /picks` answers 429 once the API's daily odds budget for user picks is spent and 503 while
+it keeps its remaining Odds API credits for grading; both carry a readable `error`.
 
 | Method | Path                                   | Response              |
 | ------ | -------------------------------------- | --------------------- |
@@ -74,7 +76,9 @@ picked side's image as thumbnail (home when the selection names no side) and sho
 next to the names.
 
 `/picks/settled` returns picks of that guild whose `settledAt` is strictly after `since`,
-oldest first, result not `pending`. `ApiSettledPick` is `ApiPick` plus `settledAt` (ISO),
+oldest first, result not `pending`, disqualified picks (locked at or after the real start)
+left out. `ApiPick` may carry `disqualified: { actualStart }` (ISO); the feed skips such a pick
+if one ever arrives. `ApiSettledPick` is `ApiPick` plus `settledAt` (ISO),
 `closingOdds` (American, optional) and `clv` (fraction like `roi`, optional). Odds are
 American; units won on a win are `units * odds / 100` (plus odds) or `units * 100 / |odds|`.
 

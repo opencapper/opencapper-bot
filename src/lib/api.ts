@@ -66,6 +66,8 @@ export interface ApiPick {
   awayImage?: string | null;
   homeCountry?: string | null;
   awayCountry?: string | null;
+  // Locked at or after the real start: listed, but left out of every record.
+  disqualified?: { actualStart: string };
 }
 
 export interface ApiSettledPick extends ApiPick {

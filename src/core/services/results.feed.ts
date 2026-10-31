@@ -141,7 +141,7 @@ async function pollGuild(guild: Guild): Promise<boolean> {
   const seen = new Set(mark.seen);
   const fresh = picks
     .filter((p) => {
-      if (p.result === "pending") return false;
+      if (p.result === "pending" || p.disqualified) return false;
       const at = Date.parse(p.settledAt);
       return at > sinceMs || (at === sinceMs && !seen.has(p.id));
     })
