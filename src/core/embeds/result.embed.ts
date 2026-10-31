@@ -60,6 +60,6 @@ export function resultEmbed(pick: ApiSettledPick): EmbedBuilder {
     .setURL(url)
     .setThumbnail(pickThumbnail(pick))
     .setDescription(lines.join("\n"))
-    .setFooter({ text: `Pick #${pick.sequence} settled` })
+    .setFooter({ text: `Pick #${pick.sequence} (id ${pick.id}) settled` })
     .setTimestamp(new Date(pick.settledAt));
 }

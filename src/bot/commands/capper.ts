@@ -12,6 +12,7 @@ import {
   ButtonBuilder,
   ButtonStyle,
   CommandInteraction,
+  GuildMember,
   MessageFlags,
   User,
   escapeMarkdown,
@@ -39,7 +40,7 @@ export class CapperCommand {
       required: false,
       type: ApplicationCommandOptionType.User,
     })
-    user: User | undefined,
+    user: User | GuildMember | undefined,
     @SlashOption({
       name: "name",
       description:

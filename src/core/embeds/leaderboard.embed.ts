@@ -8,14 +8,15 @@ import type { LeaderboardResponse } from "@/lib/api";
 import { BOT_NAME, BRAND_COLOR, profileUrl } from "@/shared/config/branding";
 import {
   type LeaderboardPeriod,
+  type LeaderboardSport,
+  leaderboardSportLabel,
   periodLabel,
 } from "@/shared/config/leaderboard";
-import { type SportKey, sportLabel } from "@/shared/config/sports";
 import { EmbedBuilder } from "discord.js";
 
 export function leaderboardEmbed(
   board: LeaderboardResponse,
-  sport: SportKey | null,
+  sport: LeaderboardSport | null,
   period: LeaderboardPeriod,
 ): EmbedBuilder {
   const lines = board.rows
@@ -27,7 +28,7 @@ export function leaderboardEmbed(
   return new EmbedBuilder()
     .setColor(BRAND_COLOR)
     .setTitle(
-      `Leaderboard: ${sport ? sportLabel(sport) : "All sports"}, ${periodLabel(period)}`,
+      `Leaderboard: ${sport ? leaderboardSportLabel(sport) : "All sports"}, ${periodLabel(period)}`,
     )
     .setDescription(
       lines.length ? fitLines(lines, 4000) : "No ranked cappers yet.",

@@ -7,9 +7,10 @@ import {
 import { ApiError, api } from "@/lib/api";
 import {
   LEADERBOARD_PERIODS,
+  LEADERBOARD_SPORTS,
   isLeaderboardPeriod,
+  isLeaderboardSport,
 } from "@/shared/config/leaderboard";
-import { SPORTS, isSportKey } from "@/shared/config/sports";
 import {
   ApplicationCommandOptionType,
   CommandInteraction,
@@ -25,7 +26,7 @@ export class LeaderboardCommand {
     contexts: [InteractionContextType.Guild],
   })
   async leaderboard(
-    @SlashChoice(...SPORTS)
+    @SlashChoice(...LEADERBOARD_SPORTS)
     @SlashOption({
       name: "sport",
       description: "Sport (default all)",
@@ -43,13 +44,13 @@ export class LeaderboardCommand {
     period: string | undefined,
     interaction: CommandInteraction,
   ) {
-    const sportKey = isSportKey(sport) ? sport : null;
+    const group = isLeaderboardSport(sport) ? sport : null;
     const window = isLeaderboardPeriod(period) ? period : "30d";
     if (!(await safeDeferReply(interaction))) return;
     try {
-      const board = await api.leaderboard(sportKey, window);
+      const board = await api.leaderboard(group, window);
       await safeEditReply(interaction, {
-        embeds: [leaderboardEmbed(board, sportKey, window)],
+        embeds: [leaderboardEmbed(board, group, window)],
         allowedMentions: { parse: [] },
       });
     } catch (err) {

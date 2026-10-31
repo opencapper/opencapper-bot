@@ -13,8 +13,13 @@ export function profileUrl(username: string): string {
 
 export const NEUTRAL_COLOR = 0x99aab5;
 
-export function verifyUrl(pick: string): string {
-  return `${WEBSITE_URL}/en/verify?pick=${encodeURIComponent(pick)}`;
+// `?pick=` is the global pick id; a capper's own numbering needs `?user=&seq=`.
+export function verifyUrl(pickId: string): string {
+  return `${WEBSITE_URL}/en/verify?pick=${encodeURIComponent(pickId)}`;
+}
+
+export function verifySequenceUrl(username: string, sequence: number): string {
+  return `${WEBSITE_URL}/en/verify?${new URLSearchParams({ user: username, seq: String(sequence) })}`;
 }
 
 export function checkUrl(query: string): string {

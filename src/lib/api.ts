@@ -1,5 +1,8 @@
 import { logger } from "@/lib/logger";
-import type { LeaderboardPeriod } from "@/shared/config/leaderboard";
+import type {
+  LeaderboardPeriod,
+  LeaderboardSport,
+} from "@/shared/config/leaderboard";
 import type { Market, SportKey } from "@/shared/config/sports";
 
 const API_URL = (
@@ -34,6 +37,7 @@ export interface CreatePickRequest {
 }
 
 export interface ApiPick {
+  // Global pick id, the one the web verify page reads from `?pick=`.
   id: string;
   sequence: number;
   username: string;
@@ -155,6 +159,7 @@ async function request<T>(
   method: "GET" | "POST",
   path: string,
   body?: unknown,
+  timeoutMs = TIMEOUT_MS,
 ): Promise<T> {
   let res: Response;
   try {
@@ -166,7 +171,7 @@ async function request<T>(
         ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       body: body === undefined ? undefined : JSON.stringify(body),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     logger.error("API unreachable", { method, path, error: String(err) });
@@ -186,8 +191,13 @@ async function request<T>(
 }
 
 export const api = {
-  events: (sport: SportKey) =>
-    request<ApiEvent[]>("GET", `/events?sport=${encodeURIComponent(sport)}`),
+  events: (sport: SportKey, timeoutMs?: number) =>
+    request<ApiEvent[]>(
+      "GET",
+      `/events?sport=${encodeURIComponent(sport)}`,
+      undefined,
+      timeoutMs,
+    ),
 
   createPick: (body: CreatePickRequest) =>
     request<ApiPick>("POST", "/picks", body),
@@ -201,9 +211,6 @@ export const api = {
         to: to.toISOString(),
       })}`,
     ),
-
-  userStats: (username: string) =>
-    request<CapperStats>("GET", `/users/${encodeURIComponent(username)}/stats`),
 
   settledPicks: (guildId: string, since: Date) =>
     request<ApiSettledPick[]>(
@@ -220,7 +227,7 @@ export const api = {
   check: (query: string) =>
     request<CapperCheck>("GET", `/check?${new URLSearchParams({ q: query })}`),
 
-  leaderboard: (sport: SportKey | null, period: LeaderboardPeriod) =>
+  leaderboard: (sport: LeaderboardSport | null, period: LeaderboardPeriod) =>
     request<LeaderboardResponse>(
       "GET",
       `/leaderboard?${new URLSearchParams({
@@ -230,3 +237,16 @@ export const api = {
       })}`,
     ),
 };
+
+// A missing profile comes back as no matches or, from newer APIs, as a 404.
+export async function findCapperByDiscordId(
+  discordId: string,
+): Promise<CheckMatch | null> {
+  try {
+    const check = await api.checkDiscord(discordId);
+    return check.matches[0] ?? null;
+  } catch (err) {
+    if (err instanceof ApiError && err.status === 404) return null;
+    throw err;
+  }
+}

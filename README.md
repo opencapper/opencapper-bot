@@ -10,19 +10,34 @@ server's honest record. The bot keeps no database: every read and write goes thr
 | ------------------------------------------ | --------------------------------------------------------------------------------- |
 | `/pick sport event market selection units` | Locks a pick at the odds the API captures. `event` autocompletes upcoming games.  |
 | `/recap [days]`                            | Record, units and ROI per capper in this server, sorted by units. Default 7 days. |
-| `/record [user]`                           | One capper's verified record. Default yourself.                                   |
+| `/record [user]`                           | One capper's live record, by Discord id. Default yourself.                        |
 | `/leaderboard [sport] [period]`            | Top 10 cappers by ROI (30d, 90d, 1y, all). Default all sports, 30 days.           |
-| `/verify pick`                             | Link to the public proof page of a pick, by number (`#42`) or id.                 |
+| `/verify pick [user]`                      | Proof page link: a pick id (`123`), or a capper's pick number (`#9`) with `user`. |
 | `/capper [user] [name]`                    | Is this capper real? Verified record, or a warning that there is none.            |
+
+`/pick` details:
+
+- `event` matches team words in any order, prefixes, initials (`KC`, `NYG`) and one or two typos
+  per word. Text typed without choosing a suggestion resolves to the single best match, or the
+  bot lists the candidates. Autocomplete waits at most 2 seconds for the API, then serves the
+  last list it has or an "unavailable" row.
+- `units` go from 0.5 to 5 in steps of 0.5, the API's shared rule (`UNITS` in
+  `src/shared/config/units.ts`). Checked before any API call.
+- One pick attempt per user every 15 seconds, before the API's own per user limit.
+- Every check that needs no odds (units, cooldown, event, started) answers privately before
+  the reply is deferred. An API error after that replaces the public reply and deletes itself
+  after a minute.
 
 ## Results feed
 
 Every 5 minutes the bot asks the API for picks settled in each server since the last post and
 posts one result embed per pick (win, loss, push or void, units won or lost, captured vs
 closing odds and CLV when known) into the first text channel whose name contains
-`RESULTS_CHANNEL` (default `results`). Servers without such a channel are skipped. The
-watermark per server lives in memory and in `DATA_DIR/results-watermarks.json` (default
-`/app/data`, a named docker volume), so restarts do not repost. A server is first polled from
+`RESULTS_CHANNEL` (default `results`), at most 50 per tick. Servers without such a channel are
+skipped. The watermark per server is `{ since, seen }`: grading stamps a whole batch with one
+time, so it keeps the ids already posted at `since` and asks the API from 1 ms earlier. It lives
+in memory and in `DATA_DIR/results-watermarks.json` (default `/app/data`, a named docker
+volume), so restarts do not repost. A server is first polled from
 the moment the bot sees its results channel, never backfilled. A 404 from the endpoint is
 treated as not deployed yet and skipped quietly.
 
@@ -48,7 +63,6 @@ sends `Authorization: Bearer <BOT_API_TOKEN>`. Errors return a non 2xx status wi
 | GET    | `/events?sport=<sportKey>`             | `ApiEvent[]`          |
 | POST   | `/picks` (body `CreatePickRequest`)    | `ApiPick`             |
 | GET    | `/recap?guildId=&from=&to=` (ISO 8601) | `RecapResponse`       |
-| GET    | `/users/:username/stats`               | `CapperStats`         |
 | GET    | `/picks/settled?guildId=&since=` (ISO) | `ApiSettledPick[]`    |
 | GET    | `/leaderboard?sport=&period=&sort=roi` | `LeaderboardResponse` |
 | GET    | `/check?q=<query>`                     | `CapperCheck`         |
@@ -64,7 +78,9 @@ oldest first, result not `pending`. `ApiSettledPick` is `ApiPick` plus `settledA
 `closingOdds` (American, optional) and `clv` (fraction like `roi`, optional). Odds are
 American; units won on a win are `units * odds / 100` (plus odds) or `units * 100 / |odds|`.
 
-`/leaderboard`: `sport` is a sport key and omitted for all sports, `period` is `30d`, `90d`,
+`/leaderboard`: `sport` is a sport group (`americanfootball`, `basketball`, `baseball`,
+`icehockey`, `soccer`, `tennis`, `golf`, `mma`, `boxing`, `cricket`, `aussierules`, `rugby`,
+the API's `SPORT_GROUPS`), not an Odds API sport key, and omitted for all sports, `period` is `30d`, `90d`,
 `1y` or `all`. Response `{ rows, minGraded, total }`, rows `{ rank, username, picks, graded,
 wins, losses, pushes, units, unitsRisked, roi, sports }` sorted by the API. A 404 shows
 "The leaderboard is coming soon."
@@ -81,8 +97,14 @@ unitsRisked, roi }`. Hidden profiles never match. No match replies "No verified 
 record for @user" with the warning and a link to the web check. The endpoint is public and rate
 limited per IP; requests with the bot token skip the limit.
 
-`/verify` needs no API call: it links to `WEBSITE_URL/en/verify?pick=<ref>`, where `ref` is
-the pick id or its sequence number. The web page resolves both.
+`/record` resolves by Discord id (`/check/discord/:discordId`) and shows the first match's
+`live` record. No match, or a 404, replies a neutral "No OpenCapper record" without the
+verified footer.
+
+`ApiPick.id` is the global pick id, the one `WEBSITE_URL/en/verify?pick=<id>` reads; every
+embed links with it and shows it next to the per capper number (`#12 (id 14)`). `/verify 14`
+needs no API call. `/verify #9 [user]` looks the capper up by Discord id (default the caller)
+and links `/en/verify?user=<username>&seq=9`.
 
 ## Deploy
 

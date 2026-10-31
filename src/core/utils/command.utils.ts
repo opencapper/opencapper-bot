@@ -50,7 +50,10 @@ export async function safeEditReply(
   }
 }
 
-// A public deferred reply cannot turn ephemeral, so drop it and follow up privately.
+const FAILURE_TTL_MS = 60_000;
+
+// A public deferred reply cannot turn ephemeral. Deleting it and following up leaves a
+// "Message could not be loaded" stub, so the error goes into the reply and removes itself.
 export async function replyFailure(
   interaction: CommandInteraction,
   error: unknown,
@@ -62,9 +65,30 @@ export async function replyFailure(
       .catch(() => {});
     return;
   }
-  await interaction.deleteReply().catch(() => {});
-  await interaction
-    .followUp({ content: error.message, flags: [MessageFlags.Ephemeral] })
+  const removeAt = Math.floor((Date.now() + FAILURE_TTL_MS) / 1000);
+  const edited = await safeEditReply(interaction, {
+    content: `${error.message}\n-# This message disappears <t:${removeAt}:R>.`,
+    embeds: [],
+    components: [],
+    allowedMentions: { parse: [] },
+  }).catch(() => false);
+  if (!edited) return;
+  setTimeout(
+    () => void interaction.deleteReply().catch(() => {}),
+    FAILURE_TTL_MS,
+  ).unref();
+}
+
+export function replyEphemeral(
+  interaction: CommandInteraction,
+  content: string,
+): Promise<unknown> {
+  return interaction
+    .reply({
+      content,
+      flags: [MessageFlags.Ephemeral],
+      allowedMentions: { parse: [] },
+    })
     .catch(() => {});
 }
 

@@ -24,7 +24,11 @@ export function pickEmbed(pick: ApiPick): EmbedBuilder {
       { name: "Odds", value: formatOdds(pick.odds), inline: true },
       { name: "Bookmaker", value: pick.bookmaker, inline: true },
       { name: "Starts", value: `<t:${kickoff}:f>`, inline: true },
-      { name: "Pick", value: `#${pick.sequence}`, inline: true },
+      {
+        name: "Pick",
+        value: `#${pick.sequence} (id ${pick.id})`,
+        inline: true,
+      },
       {
         name: "Record",
         value: `[View profile](${url}), [Verify](${verifyUrl(pick.id)})`,
