@@ -12,7 +12,15 @@ const API_URL = (
 const API_TOKEN = process.env.BOT_API_TOKEN?.trim() ?? "";
 const TIMEOUT_MS = 10_000;
 
-export type PickResult = "pending" | "win" | "loss" | "push" | "void";
+export type PickResult =
+  | "pending"
+  | "win"
+  | "loss"
+  | "push"
+  | "void"
+  | "half_win"
+  | "half_loss"
+  | "split";
 
 export interface ApiEvent {
   id: string;

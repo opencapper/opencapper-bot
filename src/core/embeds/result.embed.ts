@@ -21,19 +21,33 @@ const LABELS: Record<PickResult, string> = {
   loss: "Loss",
   push: "Push",
   void: "Void",
+  half_win: "Half win",
+  half_loss: "Half loss",
+  split: "Split",
+};
+
+// Mirrors RESULT_SHARES in the API: the share of the stake won at the price and the share lost.
+const SHARES: Record<PickResult, { win: number; loss: number }> = {
+  pending: { win: 0, loss: 0 },
+  win: { win: 1, loss: 0 },
+  loss: { win: 0, loss: 1 },
+  push: { win: 0, loss: 0 },
+  void: { win: 0, loss: 0 },
+  half_win: { win: 0.5, loss: 0 },
+  half_loss: { win: 0, loss: 0.5 },
+  split: { win: 0.5, loss: 0.5 },
 };
 
 // Odds are American, so profit per unit staked is odds/100 or 100/|odds|.
 export function unitsResult(pick: ApiSettledPick): number {
-  if (pick.result === "loss") return -pick.units;
-  if (pick.result !== "win") return 0;
+  const share = SHARES[pick.result];
   const perUnit = pick.odds > 0 ? pick.odds / 100 : 100 / Math.abs(pick.odds);
-  return pick.units * perUnit;
+  return pick.units * (share.win * perUnit - share.loss);
 }
 
 function resultColor(result: PickResult): number {
-  if (result === "win") return WIN_COLOR;
-  if (result === "loss") return LOSS_COLOR;
+  if (result === "win" || result === "half_win") return WIN_COLOR;
+  if (result === "loss" || result === "half_loss") return LOSS_COLOR;
   return NEUTRAL_COLOR;
 }
 
