@@ -11,12 +11,14 @@ import {
   resolveEvent,
   searchEvents,
 } from "@/core/utils/event.utils";
-import { api, type ApiEvent } from "@/lib/api";
+import { api, type ApiEvent, type ApiMarketOdds } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import {
   MARKETS,
   SPORTS,
+  marketLabel,
   isMarket,
+  isShapeMarket,
   isSportKey,
   sportLabel,
   type SportKey,
@@ -99,6 +101,78 @@ async function autocompleteEvent(interaction: AutocompleteInteraction) {
         query
           ? `No upcoming ${sportLabel(sport)} event matches "${query}"`
           : `No upcoming ${sportLabel(sport)} events right now`,
+        NO_EVENT,
+      );
+  await interaction.respond(choices).catch(() => {});
+}
+
+const SHAPE_TTL_MS = 60_000;
+const shapeCache = new Map<string, { at: number; lines: ApiMarketOdds[] }>();
+
+async function cachedShapeLines(
+  sport: SportKey,
+  eventId: string,
+): Promise<ApiMarketOdds[] | null> {
+  const key = `${sport}:${eventId}`;
+  const hit = shapeCache.get(key);
+  if (hit && Date.now() - hit.at < SHAPE_TTL_MS) return hit.lines;
+  try {
+    const lines = await api.shapeLines(sport, eventId, EVENTS_TIMEOUT_MS);
+    for (const [k, entry] of shapeCache)
+      if (Date.now() - entry.at >= SHAPE_TTL_MS) shapeCache.delete(k);
+    shapeCache.set(key, { at: Date.now(), lines });
+    return lines;
+  } catch (err) {
+    logger.warn("Shape lines fetch failed", { sport, error: String(err) });
+    return hit?.lines ?? null;
+  }
+}
+
+function formatOdds(american: number): string {
+  return american > 0 ? `+${american}` : String(american);
+}
+
+// Shape markets list the offered selections with their price; other markets echo what the user typed.
+async function autocompleteSelection(interaction: AutocompleteInteraction) {
+  const query = interaction.options.getFocused().trim();
+  const sport = interaction.options.getString("sport");
+  const market = interaction.options.getString("market") ?? "";
+  const eventInput = interaction.options.getString("event") ?? "";
+  if (!isShapeMarket(market) || !isSportKey(sport)) {
+    await interaction
+      .respond(query ? infoChoice(query, query.slice(0, 100)) : [])
+      .catch(() => {});
+    return;
+  }
+  const events = await cachedEvents(sport);
+  const resolved = events ? resolveEvent(events, eventInput) : null;
+  const eventId =
+    resolved?.kind === "found"
+      ? resolved.event.id
+      : EVENT_ID.test(eventInput)
+        ? eventInput
+        : null;
+  if (!eventId) {
+    await interaction
+      .respond(infoChoice("Choose the event first", NO_EVENT))
+      .catch(() => {});
+    return;
+  }
+  const lines = await cachedShapeLines(sport, eventId);
+  const outcomes = lines?.find((l) => l.market === market)?.outcomes ?? [];
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = outcomes.filter((o) =>
+    words.every((w) => o.selection.toLowerCase().includes(w)),
+  );
+  const choices = matches.length
+    ? matches.slice(0, 25).map((o) => ({
+        name: `${o.selection} (${formatOdds(o.odds)})`.slice(0, 100),
+        value: o.selection.slice(0, 100),
+      }))
+    : infoChoice(
+        lines
+          ? `No ${marketLabel(market)} offer matches "${query}"`
+          : "Prices are unavailable right now, try again in a moment",
         NO_EVENT,
       );
   await interaction.respond(choices).catch(() => {});
@@ -188,10 +262,11 @@ export class PickCommand {
     @SlashOption({
       name: "selection",
       description:
-        "Team or side, with the line for spreads and totals (Chiefs +3.5, Over 47.5, Draw)",
+        "Team or side with the line (Chiefs +3.5, Over 47.5, Draw); fight props: choose from the list",
       required: true,
       type: ApplicationCommandOptionType.String,
       maxLength: 100,
+      autocomplete: autocompleteSelection,
     })
     selection: string,
     @SlashOption({
@@ -210,6 +285,13 @@ export class PickCommand {
       await replyEphemeral(
         interaction,
         "Invalid pick. Choose a sport and market from the list.",
+      );
+      return;
+    }
+    if (selection.trim() === NO_EVENT) {
+      await replyEphemeral(
+        interaction,
+        "Choose the event first, then a selection from the list.",
       );
       return;
     }

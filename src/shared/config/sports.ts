@@ -21,9 +21,19 @@ export const MARKETS = [
   { name: "Moneyline", value: "h2h" },
   { name: "Spread", value: "spreads" },
   { name: "Total", value: "totals" },
+  { name: "Method of victory", value: "method" },
+  { name: "Period or round", value: "period_win" },
+  { name: "Goes the distance", value: "distance" },
 ] as const;
 
 export type Market = (typeof MARKETS)[number]["value"];
+
+// Selections the API offers as a fixed list (fight sports today); the user picks one instead of typing.
+const SHAPE_MARKETS: readonly string[] = ["method", "period_win", "distance"];
+
+export function isShapeMarket(value: string): boolean {
+  return SHAPE_MARKETS.includes(value);
+}
 
 export function isMarket(value: unknown): value is Market {
   return MARKETS.some((m) => m.value === value);

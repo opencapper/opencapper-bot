@@ -63,12 +63,18 @@ it keeps its remaining Odds API credits for grading; both carry a readable `erro
 | Method | Path                                   | Response              |
 | ------ | -------------------------------------- | --------------------- |
 | GET    | `/events?sport=<sportKey>`             | `ApiEvent[]`          |
+| GET    | `/events/:sportKey/:eventId/shape`     | `ApiMarketOdds[]`     |
 | POST   | `/picks` (body `CreatePickRequest`)    | `ApiPick`             |
 | GET    | `/recap?guildId=&from=&to=` (ISO 8601) | `RecapResponse`       |
 | GET    | `/picks/settled?guildId=&since=` (ISO) | `ApiSettledPick[]`    |
 | GET    | `/leaderboard?sport=&period=&sort=roi` | `LeaderboardResponse` |
 | GET    | `/check?q=<query>`                     | `CapperCheck`         |
 | GET    | `/check/discord/:discordId`            | `CapperCheck`         |
+
+`market` is one of `h2h`, `spreads`, `totals` (every sport) or `method`, `period_win`,
+`distance` (fight sports). Selections for the last three are fixed labels such as
+`Seok Hyun Ko by Submission in Round 1` or `Goes the Distance`; `/events/:sportKey/:eventId/shape`
+lists them with American odds and costs no Odds API credits, so `/pick` autocompletes from it.
 
 `ApiEvent` and `ApiPick` carry optional `homeImage`, `awayImage` (absolute image URLs) and
 `homeCountry`, `awayCountry` (short codes such as `USA`). The pick and result embeds use the
