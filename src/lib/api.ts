@@ -33,6 +33,19 @@ export interface ApiEvent {
   awayCountry?: string | null;
 }
 
+export interface ApiMarketOdds {
+  market: string;
+  bookmaker: string;
+  outcomes: {
+    name: string;
+    point: number | null;
+    // American odds.
+    odds: number;
+    selection: string;
+    bookmaker?: string;
+  }[];
+}
+
 export interface CreatePickRequest {
   discordUserId: string;
   discordUsername: string;
@@ -205,6 +218,14 @@ export const api = {
     request<ApiEvent[]>(
       "GET",
       `/events?sport=${encodeURIComponent(sport)}`,
+      undefined,
+      timeoutMs,
+    ),
+
+  shapeLines: (sport: SportKey, eventId: string, timeoutMs?: number) =>
+    request<ApiMarketOdds[]>(
+      "GET",
+      `/events/${encodeURIComponent(sport)}/${encodeURIComponent(eventId)}/shape`,
       undefined,
       timeoutMs,
     ),
